@@ -29,12 +29,15 @@ function gsb_fpp_xray_menu() {
  */
 function gsb_fpp_xray_page_form(array $form, array &$form_state) {
 
-  $fpid = '621';
+  $fpid = '';
+  if (isset($form_state['storage']['fpid'])) {
+    $fpid = $form_state['storage']['fpid'];
+  }
 
   $form['gsb_fpp_xray_fpid'] = array(
     '#type' => 'textfield',
     '#title' => t('FPP Id'),
-    '#default_value' => '',
+    '#default_value' => $fpid,
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -44,9 +47,28 @@ function gsb_fpp_xray_page_form(array $form, array &$form_state) {
     '#submit' => array('gsb_fpp_xray_form_submit'),
   );
 
+  $form['stuff'] = array(
+    '#type' => 'markup',
+    '#markup' => theme('gsb_fpp_xray_form_data', array('stuff' => $fpid)),
+  );
+
   $form['#validate'][] = 'gsb_fpp_xray_form_validate';
 
   return $form;
+}
+
+/**
+ * Implements hook_theme().
+ *
+ * Define custom theme hooks
+ */
+function gsb_fpp_xray_theme($existing, $type , $theme, $path) {
+  return array(
+    'gsb_fpp_xray_form_data' => array(
+      'template' => 'gsb_fpp_xray_form_data',
+      'file' => 'gsb_fpp_xray_form_data.theme.inc',
+    ),
+  );
 }
 
 function gsb_fpp_xray_form_validate(array &$form, array &$form_state) {
@@ -64,63 +86,10 @@ function gsb_fpp_xray_form_submit(array &$form, array &$form_state) {
     return;
   }
 
-  _gsb_fpp_xray_get_fppinfo($fpid);
+  // Store values
+  $form_state['storage']['fpid'] = $fpid;
+  
+  // Rebuild the form
+  $form_state['rebuild'] = TRUE;   
 
 }
-
-function _gsb_fpp_xray_get_fppinfo($fpid) {
-
-  // fpid (621) -> uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39)
-
-  dpm('fpp xray');
-
-  $query = new EntityFieldQuery();
-  $query->entityCondition('entity_type', 'fieldable_panels_pane')
-        ->propertyCondition('fpid', $fpid);
-  $result = $query->execute();  
-  $fpp = reset($result['fieldable_panels_pane']);
-  $fpp_entity = fieldable_panels_panes_load($fpp->fpid);
-  dpm($fpp_entity);  
-
-  // uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39) -> list of did (1056, ...)
-
-  dpm('panels_pane');
-
-  $subtype = 'uuid:' . $fpp_entity->uuid; 
-  $select = db_select('panels_pane','pp');
-  $select->fields('pp');
-  $select->condition('pp.subtype', $subtype);
-  $results = $select->execute()->fetchAll();
-  dpm($results);  
-
-  // did (1056) -> entity_id, revision_id
-
-  $dids = array();
-  foreach($results as $result) {
-    $dids[] = $result->did;
-  }
-  dpm($dids);
-
-  dpm('panelizer_entity');
-
-  $select = db_select('panelizer_entity','pe');
-  $select->addField('pe', 'entity_id');
-  $select->addField('pe', 'did');
-  $select->condition('pe.did', $dids, 'IN');
-  $select->distinct();
-  $results = $select->execute()->fetchAll();
-  dpm($results);
-
-  // entity_id (300451) -> node
-
-  $page_node_ids = array();
-  foreach($results as $result) {
-    $page_node_ids[] = $result->entity_id;
-  }
-
-  dpm('nodes');
-
-  $nodes = node_load_multiple($page_node_ids);
-  dpm($nodes); 
-
-}  
