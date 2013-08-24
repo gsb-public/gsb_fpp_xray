@@ -1,0 +1,212 @@
+
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function gsb_fpp_xray_menu() {
+  $items = array();
+  $items['admin/config/gsb'] = array(
+    'title' => 'GSB',
+    'description' => 'Site-specific configuration.',
+    'position' => 'left',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('access administration pages'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );  
+  $items['admin/config/gsb/fpp-xray'] = array(
+    'title' => 'GSB FPP Xray',
+    'description' => 'Provides detailed view of an FPP',    
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gsb_fpp_xray_page_form'),    
+    'access arguments' => array('access administration pages'),
+  );
+  return $items;
+} 
+
+/**
+ * Menu callback; displays a Drupal page containing the GSB FPP Xray form.
+ */
+function gsb_fpp_xray_page_form(array $form, array &$form_state) {
+
+  $fpid = '621';
+
+  $form['gsb_fpp_xray_fpid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('FPP Id'),
+    '#default_value' => '',
+  );
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => st('Go'),
+    '#submit' => array('gsb_fpp_xray_form_submit'),
+  );
+
+  $form['#validate'][] = 'gsb_fpp_xray_form_validate';
+
+  return $form;
+}
+
+function gsb_fpp_xray_form_validate(array &$form, array &$form_state) {
+
+}
+
+function gsb_fpp_xray_form_submit(array &$form, array &$form_state) {
+
+  if (!isset($form_state['values']['gsb_fpp_xray_fpid'])) {
+    return;
+  }
+
+  $fpid = $form_state['values']['gsb_fpp_xray_fpid'];
+  if (empty($fpid)) {
+    return;
+  }
+
+  _gsb_fpp_xray_get_fppinfo($fpid);
+
+}
+
+function _gsb_fpp_xray_get_fppinfo($fpid) {
+
+  // fpid (621) -> uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39)
+
+  dpm('fpp xray');
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'fieldable_panels_pane')
+        ->propertyCondition('fpid', $fpid);
+  $result = $query->execute();  
+  $fpp = reset($result['fieldable_panels_pane']);
+  $fpp_entity = fieldable_panels_panes_load($fpp->fpid);
+  dpm($fpp_entity);  
+
+  // uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39) -> list of did (1056, ...)
+
+  dpm('panels_pane');
+
+  $subtype = 'uuid:' . $fpp_entity->uuid; 
+  $select = db_select('panels_pane','pp');
+  $select->fields('pp');
+  $select->condition('pp.subtype', $subtype);
+  $results = $select->execute()->fetchAll();
+  dpm($results);  
+
+  // did (1056) -> entity_id, revision_id
+
+  $dids = array();
+  foreach($results as $result) {
+    $dids[] = $result->did;
+  }
+  dpm($dids);
+
+  dpm('panelizer_entity');
+
+  $select = db_select('panelizer_entity','pe');
+  $select->addField('pe', 'entity_id');
+  $select->addField('pe', 'did');
+  $select->condition('pe.did', $dids, 'IN');
+  $select->distinct();
+  $results = $select->execute()->fetchAll();
+  dpm($results);
+
+  // entity_id (300451) -> node
+
+  $page_node_ids = array();
+  foreach($results as $result) {
+    $page_node_ids[] = $result->entity_id;
+  }
+
+  dpm('nodes');
+
+  $nodes = node_load_multiple($page_node_ids);
+  dpm($nodes); 
+
+}  
+
+function _gsb_fpp_xray_get_pageinfo() {
+
+	$query = new EntityFieldQuery();
+	$query->entityCondition('entity_type', 'node')
+	      ->entityCondition('bundle', 'page');
+	$result = $query->execute();  
+
+	$page_node_ids = array_keys($result['node']);
+
+  $page_node_ids = array('300451','301386');
+	$nodes = node_load_multiple($page_node_ids);
+	//dpm($nodes);
+
+  $node_info = array();
+
+	$index = 0;
+	foreach($nodes as $node) {
+	  if ($index <= 5) {
+	    $panes = _gsb_fpp_xray_get_pagepanes($nodes, $node->nid);
+      $node_info = array_merge($node_info, $panes);
+	  }
+	  $index++;
+	}
+
+  dpm($node_info);
+
+}
+
+function _gsb_fpp_xray_get_pagepanes($nodes, $nid) {
+  
+  //dpm('in _gsb_fpp_xray_get_pagepanes');
+
+  $panes_info = array();
+
+  $panels = $nodes[$nid]->panelizer['page_manager']->display->panels;
+  $revision_id = $nodes[$nid]->panelizer['page_manager']->revision_id;
+  $status = $nodes[$nid]->status;
+  $did = $nodes[$nid]->panelizer['page_manager']->did;
+  $node_path = $nodes[$nid]->path['alias'];
+  $node_title = $nodes[$nid]->title;
+  //dpm($panels);
+
+  foreach($panels as $panel_name => $panel_ids) {
+
+    $panes_info[$nid]['nid'] = $nid;
+    $panes_info[$nid]['node_title'] = $node_title;
+    $panes_info[$nid]['node_path'] = $node_path;
+    $panes_info[$nid]['revision_id'] = $revision_id;
+    $panes_info[$nid]['status'] = $status;
+    $panes_info[$nid]['did'] = $did;  
+
+    $pids = array_values($panel_ids);
+
+    $panels_pane = db_query('SELECT pid, panel, type, subtype FROM {panels_pane} WHERE pid IN (:pids) AND did = :did'
+      , array(':pids' => $pids, ':did' => $did))->fetchAll();
+    
+    foreach ($panels_pane as $pane) {  
+
+      $panes_info[$nid]['panes'][$pane->pid]['panel'] = $pane->panel;
+      $panes_info[$nid]['panes'][$pane->pid]['type'] = $pane->type;     
+      $panes_info[$nid]['panes'][$pane->pid]['subtype'] = $pane->subtype;     
+
+      if ($pane->type == 'fieldable_panels_pane') {
+        //dpm('type is fieldable_panels_pane');
+        list($type, $id) = explode(':', $pane->subtype);
+        $ids = entity_get_id_by_uuid('fieldable_panels_pane', array($id));
+        $content = entity_load('fieldable_panels_pane', $ids);
+        //dpm($content);
+        $fpp = reset($content);
+        $panes_info[$nid]['panes'][$pane->pid]['fpid'] = $fpp->fpid;
+        $panes_info[$nid]['panes'][$pane->pid]['bundle'] = $fpp->bundle;
+        $panes_info[$nid]['panes'][$pane->pid]['uuid'] = $fpp->uuid;
+        $panes_info[$nid]['panes'][$pane->pid]['admin_title'] = $fpp->admin_title;
+      }
+
+      //dpm($pane);      
+
+    }
+
+  }
+
+  return $panes_info;
+
+}
