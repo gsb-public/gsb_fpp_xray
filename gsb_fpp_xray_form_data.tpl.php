@@ -1,7 +1,6 @@
-<?php
+<?php //dpm($variables); ?>
 
-//dpm($variables);
+<?php if (!empty($variables['stuff'])) { ?>
+	<div>Download your csv formatted output <a href="/nodes.csv">here</a>.</div>
+<?php } ?>
 
-?>
-
-<div>stuff for fpp xrayz form is: <?php print $variables['stuff']; ?></div>
