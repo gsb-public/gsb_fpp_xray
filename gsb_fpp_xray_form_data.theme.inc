@@ -69,4 +69,29 @@ function _gsb_fpp_xray_get_fppinfo($fpid) {
   $nodes = node_load_multiple($page_node_ids);
   dpm($nodes); 
 
+  _gsb_fpp_xray_download_nodes($nodes);  
+
 }
+
+function _gsb_fpp_xray_download_nodes($nodes) {
+
+  // Add the headers needed to let the browser know this is a csv file download.
+  //drupal_add_http_header('Content-Type', 'text/csv; utf-8');
+  //drupal_add_http_header('Content-Disposition', 'attachment; filename = nodes.csv');
+
+  // Open the file for writing.
+  $fh = fopen('nodes.csv', 'w');
+
+  // Add a header row
+  fputcsv($fh, array(t('NID'), t('Title')));
+
+  // Loop through our nodes and write the csv data.
+  foreach($nodes as $node) {
+    fputcsv($fh, array($node->nid, $node->title));
+  }
+ 
+  // Close & save the file.
+  fclose($fh);
+
+}
+
