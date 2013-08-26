@@ -5,20 +5,38 @@
  */                              
 function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
 
-	$fpid = $variables['stuff'];
-	if (empty($fpid)) {
-    return;
+  $info = array();
+
+	$fpid = $variables['fpid'];
+	if (!empty($fpid)) {
+    list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
+    $info[$fpid]['fpp'] = $returned_fpp;
+    $info[$fpid]['nodes'] = $returned_nodes;
   }
 
-	_gsb_fpp_xray_get_fppinfo($fpid);
+  $bundle = $variables['bundle'];
+  if (!empty($bundle)) {
+    $fpps = _gsb_fpp_xray_get_fppinfo_bybundle($bundle);
+    foreach ($fpps as $fpid) {
+      list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
+      $info[$fpid]['fpp'] = $returned_fpp;
+      $info[$fpid]['nodes'] = $returned_nodes;
+    }
+  }
+
+  if (count($info) > 0) {
+    dpm('info');
+    dpm($info);
+    _gsb_fpp_xray_download_info($info);  
+  } 
 
 }
 
-function _gsb_fpp_xray_get_fppinfo($fpid) {
+function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
 
   // fpid (621) -> uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39)
 
-  dpm('fpp xray');
+  //dpm('fpp xray by id, id = ' . $fpid);
 
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'fieldable_panels_pane')
@@ -26,18 +44,18 @@ function _gsb_fpp_xray_get_fppinfo($fpid) {
   $result = $query->execute();  
   $fpp = reset($result['fieldable_panels_pane']);
   $fpp_entity = fieldable_panels_panes_load($fpp->fpid);
-  dpm($fpp_entity);  
+  //dpm($fpp_entity);  
 
   // uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39) -> list of did (1056, ...)
 
-  dpm('panels_pane');
+  //dpm('panels_pane');
 
   $subtype = 'uuid:' . $fpp_entity->uuid; 
   $select = db_select('panels_pane','pp');
   $select->fields('pp');
   $select->condition('pp.subtype', $subtype);
   $results = $select->execute()->fetchAll();
-  dpm($results);  
+  //dpm($results);  
 
   // did (1056) -> entity_id, revision_id
 
@@ -45,9 +63,13 @@ function _gsb_fpp_xray_get_fppinfo($fpid) {
   foreach($results as $result) {
     $dids[] = $result->did;
   }
-  dpm($dids);
+  //dpm($dids);
 
-  dpm('panelizer_entity');
+  if (count($dids) == 0) {
+    return array( $fpp_entity, array() );
+  }
+
+  //dpm('panelizer_entity');
 
   $select = db_select('panelizer_entity','pe');
   $select->addField('pe', 'entity_id');
@@ -55,7 +77,7 @@ function _gsb_fpp_xray_get_fppinfo($fpid) {
   $select->condition('pe.did', $dids, 'IN');
   $select->distinct();
   $results = $select->execute()->fetchAll();
-  dpm($results);
+  //dpm($results);
 
   // entity_id (300451) -> node
 
@@ -64,30 +86,54 @@ function _gsb_fpp_xray_get_fppinfo($fpid) {
     $page_node_ids[] = $result->entity_id;
   }
 
-  dpm('nodes');
+  //dpm('nodes');
 
   $nodes = node_load_multiple($page_node_ids);
-  dpm($nodes); 
 
-  _gsb_fpp_xray_download_nodes($nodes);  
+  return array($fpp_entity, $nodes);
 
 }
 
-function _gsb_fpp_xray_download_nodes($nodes) {
+function _gsb_fpp_xray_get_fppinfo_bybundle($bundle) {
+
+  dpm('fpp xray by bundle, bundle = ' . $bundle);
+
+  $entity_type = 'fieldable_panels_pane';
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', $entity_type)
+    ->propertyCondition('bundle', $bundle);
+  $result = $query->execute();   
+
+  return array_keys($result[$entity_type]);
+
+}  
+
+function _gsb_fpp_xray_download_info($info) {
 
   // Add the headers needed to let the browser know this is a csv file download.
   //drupal_add_http_header('Content-Type', 'text/csv; utf-8');
   //drupal_add_http_header('Content-Disposition', 'attachment; filename = nodes.csv');
 
   // Open the file for writing.
-  $fh = fopen('nodes.csv', 'w');
+  $fh = fopen('info.csv', 'w');
 
   // Add a header row
-  fputcsv($fh, array(t('NID'), t('Title')));
+  fputcsv($fh, array(t('FPP Id'), t('FPP Title'), t('Reusable'), t('Node Id'), t('Node Title'),));
 
-  // Loop through our nodes and write the csv data.
-  foreach($nodes as $node) {
-    fputcsv($fh, array($node->nid, $node->title));
+  // Loop through our info and write the csv data.
+  foreach($info as $item) {
+    $fpp = $item['fpp'];
+    $nodes = $item['nodes'];
+
+    if (count($nodes) == 0) {
+      fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, '', '')); 
+    } else {
+      foreach($nodes as $node) {
+        fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, $node->nid, $node->title));      
+      }      
+    }
+
   }
  
   // Close & save the file.
