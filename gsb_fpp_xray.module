@@ -34,11 +34,22 @@ function gsb_fpp_xray_page_form(array $form, array &$form_state) {
     $fpid = $form_state['storage']['fpid'];
   }
 
+  $bundle = '';
+  if (isset($form_state['storage']['bundle'])) {
+    $bundle = $form_state['storage']['bundle'];
+  }  
+
   $form['gsb_fpp_xray_fpid'] = array(
     '#type' => 'textfield',
     '#title' => t('FPP Id'),
     '#default_value' => $fpid,
   );
+
+  $form['gsb_fpp_xray_bundle'] = array(
+    '#type' => 'textfield',
+    '#title' => t('FPP Bundle'),
+    '#default_value' => $bundle,
+  );  
 
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
@@ -49,7 +60,7 @@ function gsb_fpp_xray_page_form(array $form, array &$form_state) {
 
   $form['stuff'] = array(
     '#type' => 'markup',
-    '#markup' => theme('gsb_fpp_xray_form_data', array('stuff' => $fpid)),
+    '#markup' => theme('gsb_fpp_xray_form_data', array('fpid' => $fpid, 'bundle' => $bundle)),
   );
 
   $form['#validate'][] = 'gsb_fpp_xray_form_validate';
@@ -77,17 +88,16 @@ function gsb_fpp_xray_form_validate(array &$form, array &$form_state) {
 
 function gsb_fpp_xray_form_submit(array &$form, array &$form_state) {
 
-  if (!isset($form_state['values']['gsb_fpp_xray_fpid'])) {
-    return;
-  }
-
   $fpid = $form_state['values']['gsb_fpp_xray_fpid'];
-  if (empty($fpid)) {
+  $bundle = $form_state['values']['gsb_fpp_xray_bundle'];
+
+  if (empty($fpid) && empty($bundle)) {
     return;
   }
 
   // Store values
   $form_state['storage']['fpid'] = $fpid;
+  $form_state['storage']['bundle'] = $bundle;
   
   // Rebuild the form
   $form_state['rebuild'] = TRUE;   
