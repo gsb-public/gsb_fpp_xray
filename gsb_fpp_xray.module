@@ -21,6 +21,13 @@ function gsb_fpp_xray_menu() {
     'page arguments' => array('gsb_fpp_xray_page_form'),    
     'access arguments' => array('access administration pages'),
   );
+  $items['admin/config/gsb/fpp-xray/download/%'] = array(
+    'title' => 'GSB FPP Xray Download',
+    'description' => 'Download the xray file',    
+    'page callback' => 'gsb_fpp_xray_download',
+    'page arguments' => array(5),
+    'access arguments' => array('access administration pages'),
+  );  
   return $items;
 } 
 
@@ -103,3 +110,21 @@ function gsb_fpp_xray_form_submit(array &$form, array &$form_state) {
   $form_state['rebuild'] = TRUE;   
 
 }
+
+function gsb_fpp_xray_download($file_name) {
+
+  $file_name = "temporary://" . $file_name;
+  $file_name = str_replace('.csv', '', $file_name);
+
+  drupal_add_http_header('Content-Type', 'application/force-download');
+  drupal_add_http_header('Pragma', 'public');
+  drupal_add_http_header('Cache-Control', 'max-age=0');
+
+  @readfile($file_name);  // The @ makes it silent.
+  @unlink($file_name);  // Clean up, the @ makes it silent.
+
+  exit();
+
+}
+
+

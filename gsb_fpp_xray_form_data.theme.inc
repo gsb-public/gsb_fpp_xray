@@ -27,7 +27,8 @@ function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
   if (count($info) > 0) {
     dpm('info');
     dpm($info);
-    _gsb_fpp_xray_download_info($info);  
+    $file_name = _gsb_fpp_xray_download_info($info);  
+    $variables['file_name'] = $file_name;
   } 
 
 }
@@ -116,10 +117,11 @@ function _gsb_fpp_xray_download_info($info) {
   //drupal_add_http_header('Content-Disposition', 'attachment; filename = nodes.csv');
 
   // Open the file for writing.
-  $fh = fopen('info.csv', 'w');
+  $file_name = drupal_tempnam('temporary://', 'fpp_xray_csv_');
+  $fh = @fopen($file_name, 'w'); // The @ suppresses errors.  
 
   // Add a header row
-  fputcsv($fh, array(t('FPP Id'), t('FPP Title'), t('Reusable'), t('Node Id'), t('Node Title'), t('Sections'),));
+  @fputcsv($fh, array(t('FPP Id'), t('FPP Title'), t('Reusable'), t('Node Id'), t('Node Title'), t('Sections'),));
 
   // Loop through our info and write the csv data.
   foreach($info as $item) {
@@ -127,18 +129,21 @@ function _gsb_fpp_xray_download_info($info) {
     $nodes = $item['nodes'];
 
     if (count($nodes) == 0) {
-      fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, '', '')); 
+      @fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, '', '')); 
     } else {
       foreach($nodes as $node) { 
         $sections = _gsb_fpp_xray_get_sections_byid(array_keys($node->workbench_access));
-        fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, $node->nid, $node->title, $sections));
+        @fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, $node->nid, $node->title, $sections));
       }      
     }
 
   }
  
   // Close & save the file.
-  fclose($fh);
+  @fclose($fh);  
+
+  $file_name = str_replace('temporary://', '', $file_name);
+  return $file_name;
 
 }
 
