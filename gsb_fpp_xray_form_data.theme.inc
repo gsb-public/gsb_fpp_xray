@@ -25,8 +25,8 @@ function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
   }
 
   if (count($info) > 0) {
-    dpm('info');
-    dpm($info);
+    _gsb_fpp_xray_dpm('info');
+    _gsb_fpp_xray_dpm($info);
     $file_name = _gsb_fpp_xray_download_info($info);  
     $variables['file_name'] = $file_name;
   } 
@@ -97,7 +97,7 @@ function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
 
 function _gsb_fpp_xray_get_fppinfo_bybundle($bundle) {
 
-  dpm('fpp xray by bundle, bundle = ' . $bundle);
+  _gsb_fpp_xray_dpm('fpp xray by bundle, bundle = ' . $bundle);
 
   $entity_type = 'fieldable_panels_pane';
 
@@ -158,4 +158,5 @@ function _gsb_fpp_xray_get_sections_byid($ids) {
 
   return implode(',', array_values($sections));
 }
+
 

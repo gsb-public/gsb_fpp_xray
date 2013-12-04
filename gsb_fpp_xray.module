@@ -127,4 +127,16 @@ function gsb_fpp_xray_download($file_name) {
 
 }
 
+function _gsb_fpp_xray_dpm($input, $name = NULL, $type = 'status') {
 
+  if (function_exists('dpm')) {
+    dpm($input, $name, $type);
+  } else {
+    ob_start();
+    print_r($input);
+    $output = ob_get_clean();   
+    $export = '<pre>'. $output .'</pre>'; 
+    drupal_set_message($export, $type);
+  }
+  
+}
