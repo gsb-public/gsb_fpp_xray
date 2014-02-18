@@ -5,6 +5,8 @@
  */                              
 function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
 
+  $action = '';
+
   $info = array();
 
 	$fpid = $variables['fpid'];
@@ -12,6 +14,8 @@ function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
     list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
     $info[$fpid]['fpp'] = $returned_fpp;
     $info[$fpid]['nodes'] = $returned_nodes;
+    $variables['action'] = 'byid';
+    $variables['data'] = $fpid;
   }
 
   $bundle = $variables['bundle'];
@@ -22,14 +26,17 @@ function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
       $info[$fpid]['fpp'] = $returned_fpp;
       $info[$fpid]['nodes'] = $returned_nodes;
     }
+    $variables['action'] = 'bybundle';
+    $variables['data'] = $bundle;
   }
 
   if (count($info) > 0) {
     _gsb_fpp_xray_dpm('info');
     _gsb_fpp_xray_dpm($info);
-    $file_name = _gsb_fpp_xray_download_info($info);  
+    $file_name = drupal_tempnam('temporary://', 'fpp_xray_csv_');
+    $file_name = str_replace('temporary://', '', $file_name);
     $variables['file_name'] = $file_name;
-  } 
+  }
 
 }
 
@@ -110,14 +117,8 @@ function _gsb_fpp_xray_get_fppinfo_bybundle($bundle) {
 
 }  
 
-function _gsb_fpp_xray_download_info($info) {
+function _gsb_fpp_xray_download_info($info, $file_name) {
 
-  // Add the headers needed to let the browser know this is a csv file download.
-  //drupal_add_http_header('Content-Type', 'text/csv; utf-8');
-  //drupal_add_http_header('Content-Disposition', 'attachment; filename = nodes.csv');
-
-  // Open the file for writing.
-  $file_name = drupal_tempnam('temporary://', 'fpp_xray_csv_');
   $fh = @fopen($file_name, 'w'); // The @ suppresses errors.  
 
   // Add a header row
