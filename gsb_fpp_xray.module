@@ -1,5 +1,7 @@
 <?php
 
+require_once drupal_get_path('module', 'gsb_fpp_xray') . '/gsb_fpp_xray_form_data.theme.inc';
+
 /**
  * Implements hook_menu().
  */
@@ -21,11 +23,11 @@ function gsb_fpp_xray_menu() {
     'page arguments' => array('gsb_fpp_xray_page_form'),    
     'access arguments' => array('access administration pages'),
   );
-  $items['admin/config/gsb/fpp-xray/download/%'] = array(
+  $items['admin/config/gsb/fpp-xray/download/%/%/%'] = array(
     'title' => 'GSB FPP Xray Download',
     'description' => 'Download the xray file',    
     'page callback' => 'gsb_fpp_xray_download',
-    'page arguments' => array(5),
+    'page arguments' => array(5,6,7),
     'access arguments' => array('access administration pages'),
   );  
   return $items;
@@ -111,10 +113,32 @@ function gsb_fpp_xray_form_submit(array &$form, array &$form_state) {
 
 }
 
-function gsb_fpp_xray_download($file_name) {
+function gsb_fpp_xray_download($action, $data, $file_name) {
 
-  $file_name = "temporary://" . $file_name;
+  $info = array();
+
+	if ($action == 'byid') {
+    $fpid = $data;
+    list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
+    $info[$fpid]['fpp'] = $returned_fpp;
+    $info[$fpid]['nodes'] = $returned_nodes;
+  }
+  else if ($action == 'bybundle') {
+    $fpps = _gsb_fpp_xray_get_fppinfo_bybundle($data);
+    foreach ($fpps as $fpid) {
+      list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
+      $info[$fpid]['fpp'] = $returned_fpp;
+      $info[$fpid]['nodes'] = $returned_nodes;
+    }
+  }
+  else {
+    exit();
+  }
+
   $file_name = str_replace('.csv', '', $file_name);
+  $file_name = "temporary://" . $file_name;
+
+  _gsb_fpp_xray_download_info($info, $file_name);
 
   drupal_add_http_header('Content-Type', 'application/force-download');
   drupal_add_http_header('Pragma', 'public');
