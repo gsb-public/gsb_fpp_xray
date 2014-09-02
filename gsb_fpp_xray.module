@@ -63,7 +63,7 @@ function gsb_fpp_xray_page_form(array $form, array &$form_state) {
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => st('Go'),
+    '#value' => t('Go'),
     '#submit' => array('gsb_fpp_xray_form_submit'),
   );
 
