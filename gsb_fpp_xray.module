@@ -164,3 +164,14 @@ function _gsb_fpp_xray_dpm($input, $name = NULL, $type = 'status') {
   }
   
 }
+
+/**
+ * Implements hook_views_pre_execute().
+ * This function dumps the query being used by a view.
+ *
+ * Todo: Need to add this into XRay config settings to be able to turn this on/off. 
+ */
+function gsb_fpp_xray_views_pre_execute(&$view) {
+  //dpm($view);
+  //dpq($view->build_info['query']);
+}
