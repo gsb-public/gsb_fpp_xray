@@ -2,15 +2,15 @@
 
 /**
  * Returns themed HTML for the FPP Xray form.
- */                              
+ */
 function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
 
   $action = '';
 
   $info = array();
 
-	$fpid = $variables['fpid'];
-	if (!empty($fpid)) {
+  $fpid = $variables['fpid'];
+  if (!empty($fpid)) {
     list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
     $info[$fpid]['fpp'] = $returned_fpp;
     $info[$fpid]['nodes'] = $returned_nodes;
@@ -49,21 +49,21 @@ function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'fieldable_panels_pane')
         ->propertyCondition('fpid', $fpid);
-  $result = $query->execute();  
+  $result = $query->execute();
   $fpp = reset($result['fieldable_panels_pane']);
   $fpp_entity = fieldable_panels_panes_load($fpp->fpid);
-  //dpm($fpp_entity);  
+  //dpm($fpp_entity);
 
   // uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39) -> list of did (1056, ...)
 
   //dpm('panels_pane');
 
-  $subtype = 'uuid:' . $fpp_entity->uuid; 
+  $subtype = 'uuid:' . $fpp_entity->uuid;
   $select = db_select('panels_pane','pp');
   $select->fields('pp');
   $select->condition('pp.subtype', $subtype);
   $results = $select->execute()->fetchAll();
-  //dpm($results);  
+  //dpm($results);
 
   // did (1056) -> entity_id, revision_id
 
@@ -72,6 +72,21 @@ function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
     $dids[] = $result->did;
   }
   //dpm($dids);
+
+  if (count($dids) == 0) {
+
+    $subtype = 'current:' . $fpid;
+    $select = db_select('panels_pane','pp');
+    $select->fields('pp');
+    $select->condition('pp.subtype', $subtype);
+    $results = $select->execute()->fetchAll();
+    //dpm($results);
+
+    foreach($results as $result) {
+      $dids[] = $result->did;
+    }
+    //dpm($dids);
+  }
 
   if (count($dids) == 0) {
     return array( $fpp_entity, array() );
@@ -111,15 +126,15 @@ function _gsb_fpp_xray_get_fppinfo_bybundle($bundle) {
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', $entity_type)
     ->propertyCondition('bundle', $bundle);
-  $result = $query->execute();   
+  $result = $query->execute();
 
   return array_keys($result[$entity_type]);
 
-}  
+}
 
 function _gsb_fpp_xray_download_info($info, $file_name) {
 
-  $fh = @fopen($file_name, 'w'); // The @ suppresses errors.  
+  $fh = @fopen($file_name, 'w'); // The @ suppresses errors.
 
   // Add a header row
   @fputcsv($fh, array(t('FPP Id'), t('FPP Title'), t('Reusable'), t('Node Id'), t('Node Title'), t('Sections'),));
@@ -130,18 +145,18 @@ function _gsb_fpp_xray_download_info($info, $file_name) {
     $nodes = $item['nodes'];
 
     if (count($nodes) == 0) {
-      @fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, '', '')); 
+      @fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, '', ''));
     } else {
-      foreach($nodes as $node) { 
+      foreach($nodes as $node) {
         $sections = _gsb_fpp_xray_get_sections_byid(array_keys($node->workbench_access));
         @fputcsv($fh, array($fpp->fpid, $fpp->admin_title, $fpp->reusable, $node->nid, $node->title, $sections));
-      }      
+      }
     }
 
   }
- 
+
   // Close & save the file.
-  @fclose($fh);  
+  @fclose($fh);
 
   $file_name = str_replace('temporary://', '', $file_name);
   return $file_name;
