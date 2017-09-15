@@ -68,31 +68,66 @@ function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
   // did (1056) -> entity_id, revision_id
 
   $dids = array();
+  $pids = array();
+
   foreach($results as $result) {
     $dids[] = $result->did;
+    $pids[] = $result->pid;
   }
   //dpm($dids);
 
-  if (count($dids) == 0) {
+  // Look for 'current:' subtype
 
-    $subtype = 'current:' . $fpid;
-    $select = db_select('panels_pane','pp');
-    $select->fields('pp');
-    $select->condition('pp.subtype', $subtype);
-    $results = $select->execute()->fetchAll();
-    //dpm($results);
+  $subtype = 'current:' . $fpid;
+  $select = db_select('panels_pane','pp');
+  $select->fields('pp');
+  $select->condition('pp.subtype', $subtype);
+  $results = $select->execute()->fetchAll();
+  //dpm($results);
 
-    foreach($results as $result) {
-      $dids[] = $result->did;
-    }
-    //dpm($dids);
+  foreach($results as $result) {
+    $dids[] = $result->did;
+    $pids[] = $result->pid;
   }
+  //dpm($dids);
+
+  // Look for 'uuid:' subtype
+
+  $subtype = 'uuid:' . $fpp_entity->uuid;
+  $select = db_select('panels_pane','pp');
+  $select->fields('pp');
+  $select->condition('pp.subtype', $subtype);
+  $results = $select->execute()->fetchAll();
+  //dpm($results);
+
+  foreach($results as $result) {
+    $dids[] = $result->did;
+    $pids[] = $result->pid;
+  }
+  //dpm($dids);
+
+  // Look for 'vuuid:' subtype
+
+  $subtype = 'vuuid:' . $fpp_entity->vuuid;
+  $select = db_select('panels_pane','pp');
+  $select->fields('pp');
+  $select->condition('pp.subtype', $subtype);
+  $results = $select->execute()->fetchAll();
+  //dpm($results);
+
+  foreach($results as $result) {
+    $dids[] = $result->did;
+    $pids[] = $result->pid;
+  }
+  //dpm($dids);
 
   if (count($dids) == 0) {
     return array( $fpp_entity, array() );
   }
 
   //dpm('panelizer_entity');
+
+  // Look up nodes by dids
 
   $select = db_select('panelizer_entity','pe');
   $select->addField('pe', 'entity_id');
@@ -113,8 +148,19 @@ function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
 
   $nodes = node_load_multiple($page_node_ids);
 
-  return array($fpp_entity, $nodes);
+  // Check the panel panes of the nodes for matching pids
 
+  $valid_nodes = array();
+  foreach($nodes as $node) {
+    foreach($pids as $pid) {
+      if (!empty($node->panelizer['page_manager']->display->content[$pid])) {
+        $valid_nodes[$node->nid] = $node;
+        break;
+      }
+    }
+  }
+
+  return array($fpp_entity, $valid_nodes);
 }
 
 function _gsb_fpp_xray_get_fppinfo_bybundle($bundle) {
