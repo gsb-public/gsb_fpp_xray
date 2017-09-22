@@ -40,23 +40,13 @@ function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
 
 }
 
-function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
-
-  // fpid (621) -> uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39)
-
-  //dpm('fpp xray by id, id = ' . $fpid);
-
-  $query = new EntityFieldQuery();
-  $query->entityCondition('entity_type', 'fieldable_panels_pane')
-        ->propertyCondition('fpid', $fpid);
-  $result = $query->execute();
-  $fpp = reset($result['fieldable_panels_pane']);
-  $fpp_entity = fieldable_panels_panes_load($fpp->fpid);
-  //dpm($fpp_entity);
+function _gsb_fpp_xray_get_fppinfo_byentity($fpp_entity) {
 
   // uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39) -> list of did (1056, ...)
 
   //dpm('panels_pane');
+
+  $fpid = $fpp_entity->fpid;
 
   $subtype = 'uuid:' . $fpp_entity->uuid;
   $select = db_select('panels_pane','pp');
@@ -161,6 +151,45 @@ function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
   }
 
   return array($fpp_entity, $valid_nodes);
+}
+
+function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
+
+  // fpid (621) -> uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39)
+
+  //dpm('fpp xray by id, id = ' . $fpid);
+
+  $select = db_select('fieldable_panels_panes_revision','fpprev');
+  $select->addField('fpprev', 'fpid');
+  $select->addField('fpprev', 'vid');
+  $select->condition('fpprev.fpid', $fpid);
+  $select->distinct();
+  $results = $select->execute()->fetchAll();
+
+  $returned_fpp = array();
+  $returned_nodes = array();
+
+  foreach($results as $result) {
+
+    $vid = $result->vid;
+
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'fieldable_panels_pane')
+      ->propertyCondition('fpid', $fpid);
+    $result = $query->execute();
+    $fpp = reset($result['fieldable_panels_pane']);
+    $fpp_entity = fieldable_panels_panes_load($fpp->fpid, $vid);
+
+    list($found_fpp, $found_nodes) = _gsb_fpp_xray_get_fppinfo_byentity($fpp_entity);
+    $returned_fpp = $found_fpp;
+
+    array_walk($found_nodes, function($value, $key) use (&$returned_nodes) {
+      $returned_nodes[$key] = $value;
+    });
+
+  }
+
+  return array($returned_fpp, $returned_nodes);
 }
 
 function _gsb_fpp_xray_get_fppinfo_bybundle($bundle) {
