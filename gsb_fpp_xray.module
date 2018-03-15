@@ -1,6 +1,8 @@
 <?php
 
 require_once drupal_get_path('module', 'gsb_fpp_xray') . '/gsb_fpp_xray_form_data.theme.inc';
+require_once drupal_get_path('module', 'gsb_fpp_xray') . '/bybundle.inc';
+require_once drupal_get_path('module', 'gsb_fpp_xray') . '/byid.inc';
 
 /**
  * Implements hook_menu().
@@ -31,7 +33,7 @@ function gsb_fpp_xray_menu() {
     'access arguments' => array('access administration pages'),
   );  
   return $items;
-} 
+}
 
 /**
  * Menu callback; displays a Drupal page containing the GSB FPP Xray form.
@@ -69,7 +71,12 @@ function gsb_fpp_xray_page_form(array $form, array &$form_state) {
 
   $form['stuff'] = array(
     '#type' => 'markup',
-    '#markup' => theme('gsb_fpp_xray_form_data', array('fpid' => $fpid, 'bundle' => $bundle)),
+    '#markup' => theme('gsb_fpp_xray_form_data',
+      array(
+        'fpid' => $fpid,
+        'bundle' => $bundle
+      )
+    ),
   );
 
   $form['#validate'][] = 'gsb_fpp_xray_form_validate';
@@ -118,17 +125,13 @@ function gsb_fpp_xray_download($action, $data, $file_name) {
   $info = array();
 
 	if ($action == 'byid') {
-    $fpid = $data;
-    list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
-    $info[$fpid]['fpp'] = $returned_fpp;
-    $info[$fpid]['nodes'] = $returned_nodes;
+    $fppid = $data;
+    $info[$fppid] = _gsb_fpp_xray_get_fppinfo_byid($fppid);
   }
   else if ($action == 'bybundle') {
-    $fpps = _gsb_fpp_xray_get_fppinfo_bybundle($data);
-    foreach ($fpps as $fpid) {
-      list($returned_fpp, $returned_nodes) = _gsb_fpp_xray_get_fppinfo_byid($fpid);
-      $info[$fpid]['fpp'] = $returned_fpp;
-      $info[$fpid]['nodes'] = $returned_nodes;
+    $fppids = _gsb_fpp_xray_get_fppid_by_bundle($data);
+    foreach ($fppids as $fppid) {
+      $info[$fppid] = _gsb_fpp_xray_get_fppinfo_byid($fppid);
     }
   }
   else {
