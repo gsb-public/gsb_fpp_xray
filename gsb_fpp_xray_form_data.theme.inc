@@ -42,68 +42,14 @@ function gsb_fpp_xray_preprocess_gsb_fpp_xray_form_data(&$variables) {
 
 function _gsb_fpp_xray_get_fppinfo_byentity($fpp_entity) {
 
-  // uuid (df2fc47e-1346-4c40-84ce-dc0b27a43d39) -> list of did (1056, ...)
-
-  //dpm('panels_pane');
-
-  $fpid = $fpp_entity->fpid;
-
-  $subtype = 'uuid:' . $fpp_entity->uuid;
-  $select = db_select('panels_pane','pp');
-  $select->fields('pp');
-  $select->condition('pp.subtype', $subtype);
-  $results = $select->execute()->fetchAll();
-  //dpm($results);
-
-  // did (1056) -> entity_id, revision_id
-
   $dids = array();
   $pids = array();
 
-  foreach($results as $result) {
-    $dids[] = $result->did;
-    $pids[] = $result->pid;
-  }
-  //dpm($dids);
-
-  // Look for 'current:' subtype
-
-  $subtype = 'current:' . $fpid;
+  $subtypes = array('current:'. $fpp_entity->fpid, 'uuid:' . $fpp_entity->uuid, 'vuuid:' . $fpp_entity->vuuid);
   $select = db_select('panels_pane','pp');
   $select->fields('pp');
-  $select->condition('pp.subtype', $subtype);
+  $select->condition('pp.subtype', $subtypes, 'IN');
   $results = $select->execute()->fetchAll();
-  //dpm($results);
-
-  foreach($results as $result) {
-    $dids[] = $result->did;
-    $pids[] = $result->pid;
-  }
-  //dpm($dids);
-
-  // Look for 'uuid:' subtype
-
-  $subtype = 'uuid:' . $fpp_entity->uuid;
-  $select = db_select('panels_pane','pp');
-  $select->fields('pp');
-  $select->condition('pp.subtype', $subtype);
-  $results = $select->execute()->fetchAll();
-  //dpm($results);
-
-  foreach($results as $result) {
-    $dids[] = $result->did;
-    $pids[] = $result->pid;
-  }
-  //dpm($dids);
-
-  // Look for 'vuuid:' subtype
-
-  $subtype = 'vuuid:' . $fpp_entity->vuuid;
-  $select = db_select('panels_pane','pp');
-  $select->fields('pp');
-  $select->condition('pp.subtype', $subtype);
-  $results = $select->execute()->fetchAll();
-  //dpm($results);
 
   foreach($results as $result) {
     $dids[] = $result->did;
