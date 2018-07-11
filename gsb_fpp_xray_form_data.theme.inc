@@ -77,10 +77,76 @@ function _gsb_fpp_xray_get_fppinfo_byentity($fpp_entity) {
 
   $page_node_ids = array();
   foreach($results as $result) {
-    $page_node_ids[] = $result->entity_id;
+    $page_node_ids[$result->did] = $result->entity_id;
   }
 
-  //dpm('nodes');
+  $valid_nodes = findValidNodes_new($page_node_ids, $pids, $fpp_entity);
+
+  return array($fpp_entity, $valid_nodes);
+}
+
+function findValidNodes_new($page_node_ids, $pids, $fpp_entity) {
+
+  // select nid from node table
+  $select = db_select('node','node');
+  $select->addField('node', 'nid');
+  $select->addField('node', 'vid');
+  $select->condition('node.nid', $page_node_ids, 'IN');
+  $select->distinct();
+  $results = $select->execute()->fetchAll();
+
+  $vids = array();
+  foreach($results as $result) {
+    $vids[] = $result->vid;
+  }
+
+  /*
+  $result = db_query("SELECT * FROM {panelizer_entity} WHERE entity_type = :entity_type AND revision_id IN (:vids)", array(':entity_type' => 'node', ':vids' => $vids));
+  while ($panelizer = $result->fetchObject()) {
+    $dids[] = $panelizer->did;
+  }
+  */
+  /*
+  if ($this->supports_revisions) {
+    $result = db_query("SELECT * FROM {panelizer_entity} WHERE entity_type = :entity_type AND revision_id IN (:vids)", array(':entity_type' => $this->entity_type, ':vids' => $vids));
+  }
+  else {
+    $result = db_query("SELECT * FROM {panelizer_entity} WHERE entity_type = :entity_type AND entity_id IN (:ids)", array(':entity_type' => $this->entity_type, ':ids' => $ids));
+  }
+  */
+
+  $select = db_select('panelizer_entity','pe');
+  $select->addField('pe', 'did');
+  $select->addField('pe', 'revision_id');
+  $select->addField('pe', 'entity_type');
+  $select->condition('pe.entity_type', 'node');
+  $select->condition('pe.revision_id', $vids, 'IN');
+  $select->distinct();
+  $results = $select->execute()->fetchAll();
+  foreach($results as $result) {
+    $dids[] = $result->did;
+  }
+
+  $displays = panels_load_displays($dids);
+
+  $valid_nodes = array();
+  foreach ($displays as $display) {
+    foreach ($display->content as $content) {
+      foreach($pids as $pid) {
+        if ($content->pid == $pid) {
+          if (!empty($page_node_ids[$content->did])) {
+            $valid_nodes[] = $page_node_ids[$content->did];
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return $valid_nodes;
+}
+
+function findValidNodes($page_node_ids, $pids) {
 
   $nodes = node_load_multiple($page_node_ids);
 
@@ -96,7 +162,7 @@ function _gsb_fpp_xray_get_fppinfo_byentity($fpp_entity) {
     }
   }
 
-  return array($fpp_entity, $valid_nodes);
+  return $valid_nodes;
 }
 
 function _gsb_fpp_xray_get_fppinfo_byid($fpid) {
@@ -195,5 +261,4 @@ function _gsb_fpp_xray_get_sections_byid($ids) {
 
   return implode(',', array_values($sections));
 }
-
 
